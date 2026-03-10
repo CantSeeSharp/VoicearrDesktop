@@ -1,0 +1,28 @@
+{
+  "name": "voicearr-desktop",
+  "version": "1.0.0",
+  "description": "Voicearr Desktop Client",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsc && electron .",
+    "build": "tsc",
+    "dist": "tsc && electron-builder",
+    "dist:win": "tsc && electron-builder --win",
+    "dist:linux": "node scripts/build-linux.js",
+    "dist:linux:raw": "tsc && electron-builder --linux",
+    "dist:mac": "tsc && electron-builder --mac",
+    "generate:badge": "node scripts/create-badge.js",
+    "rebuild": "electron-rebuild"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3",
+    "uiohook-napi": "^1.5.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^3.6.0",
+    "@types/node": "^22.0.0",
+    "electron": "^34.0.0",
+    "electron-builder": "^25.0.0",
+    "typescript": "^5.8.0"
+  }
+}

@@ -1,0 +1,6 @@
+# Place your app icons here before building:
+#   icon.png  — 256x256 PNG (used by Linux + tray)
+#   icon.ico  — Windows multi-size ICO (required for NSIS installer)
+#   icon.icns — macOS ICNS (required for DMG)
+#
+# Once icons are added, uncomment the icon lines in electron-builder.yml

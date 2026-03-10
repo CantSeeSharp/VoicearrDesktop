@@ -1,0 +1,46 @@
+---
+# Linux AppImage — runs in Docker on a Linux Drone agent
+kind: pipeline
+type: docker
+name: release-linux
+platform:
+  os: linux
+  arch: amd64
+trigger:
+  ref:
+    - refs/tags/v*
+steps:
+  - name: build-and-publish
+    image: electronuserland/builder:18
+    environment:
+      GH_TOKEN:
+        from_secret: GH_TOKEN
+    commands:
+      - npm ci
+      - npm run rebuild
+      - npx tsc
+      - npx electron-builder --linux --publish always
+
+---
+# Windows NSIS installer — runs natively on a Windows Drone exec agent.
+# Requires a Drone agent registered with: drone agent --platform windows/amd64
+# uiohook-napi prebuilts are downloaded automatically by npm ci on Windows.
+kind: pipeline
+type: exec
+name: release-windows
+platform:
+  os: windows
+  arch: amd64
+trigger:
+  ref:
+    - refs/tags/v*
+steps:
+  - name: build-and-publish
+    environment:
+      GH_TOKEN:
+        from_secret: GH_TOKEN
+    commands:
+      - npm ci
+      - npm run rebuild
+      - npx tsc
+      - npx electron-builder --win --publish always
