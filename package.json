@@ -1,6 +1,6 @@
 {
   "name": "voicearr-desktop",
-  "version": "1.0.0",
+  "version": "1.0.0-beta",
   "description": "Voicearr Desktop Client",
   "main": "dist/main.js",
   "scripts": {
