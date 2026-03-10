@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - '[0-9]*'
 
 jobs:
   build:
@@ -24,6 +24,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '18'
+
+      - name: Verify tag matches package.json version
+        shell: bash
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "❌ Tag '$GITHUB_REF_NAME' does not match package.json version '$PKG_VERSION'"
+            exit 1
+          fi
 
       - name: Install Linux system dependencies
         if: runner.os == 'Linux'

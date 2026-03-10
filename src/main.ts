@@ -90,7 +90,7 @@ async function resolveConfig(): Promise<AppConfig> {
   try {
     const version = app.getVersion();
     const response = await fetch(
-      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/tags/v${version}`,
+      `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/tags/${version}`,
       { headers: { 'User-Agent': 'Voicearr-Desktop' } },
     );
     if (response.ok) {

@@ -9,6 +9,7 @@ publish:
   provider: github
   owner: CantSeeSharp
   repo: VoicearrDesktop
+  tagPrefix: ""
   # Releases tagged v1.0.0-beta.1 (with pre-release segment) are automatically
   # marked as pre-release on GitHub. Stable tags like v1.0.0 produce stable releases.
   # The app reads the GitHub release API at startup to pick the correct server URL.
