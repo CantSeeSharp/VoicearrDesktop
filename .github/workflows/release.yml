@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - '[0-9]*'
+      - 'v[0-9]*'
 
 jobs:
   build:
@@ -29,10 +29,22 @@ jobs:
         shell: bash
         run: |
           PKG_VERSION=$(node -p "require('./package.json').version")
-          TAG_VERSION="${GITHUB_REF_NAME}"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
           if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
             echo "❌ Tag '$GITHUB_REF_NAME' does not match package.json version '$PKG_VERSION'"
             exit 1
+          fi
+
+      - name: Decide GitHub release type
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          if [[ "$VERSION" == *"-beta"* ]]; then
+            echo "EP_PRE_RELEASE=true" >> $GITHUB_ENV
+            echo "Release will be published as a prerelease"
+          else
+            echo "Release will be published as a full release"
           fi
 
       - name: Install Linux system dependencies
@@ -42,9 +54,7 @@ jobs:
           sudo apt-get install -y libfuse2 libx11-dev libxtst-dev libxinerama-dev libxrandr-dev
 
       - run: npm ci
-
       - run: npm run rebuild
-
       - run: npx tsc
 
       - name: Build and publish
