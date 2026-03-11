@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, shell, Notification } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, shell, Notification, dialog } from 'electron';
 import * as path from 'path';
 import { autoUpdater } from 'electron-updater';
 import { APP_NAME, GITHUB_OWNER, GITHUB_REPO, STAGING_URL, PRODUCTION_URL, DEV_URL } from './app.config';
@@ -10,6 +10,7 @@ let tray: Tray | null = null;
 let isQuitting = false;
 let updateReady = false;
 let resolvedServerUrl = DEV_URL;
+let manualUpdateCheck = false;
 
 // ── PTT state ─────────────────────────────────────────────────────────────────
 let pttEnabled = false;
@@ -111,12 +112,58 @@ async function resolveConfig(): Promise<AppConfig> {
 }
 
 // ── Auto-updater ───────────────────────────────────────────────────────────────
+async function checkForMandatoryUpdate(isPreRelease: boolean): Promise<void> {
+  if (!app.isPackaged) return;
+
+  autoUpdater.allowPrerelease = isPreRelease;
+  autoUpdater.autoDownload = true;
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, 30_000);
+
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+
+    autoUpdater.once('update-not-available', done);
+    autoUpdater.once('error', (err: Error) => {
+      console.warn('Launch update check failed:', err.message);
+      done();
+    });
+    autoUpdater.once('update-downloaded', () => {
+      autoUpdater.quitAndInstall(true, true);
+    });
+
+    autoUpdater.checkForUpdates().catch((err: Error) => {
+      console.warn('Launch update check failed:', err.message);
+      done();
+    });
+  });
+}
+
 function setupAutoUpdater(isPreRelease: boolean): void {
   if (!app.isPackaged) return;
 
   // Pre-release builds also track pre-release updates; stable builds only see stable.
   autoUpdater.allowPrerelease = isPreRelease;
   autoUpdater.autoDownload = true;
+
+  autoUpdater.on('update-available', (info: { version: string }) => {
+    new Notification({
+      title: 'Update Available',
+      body: `Voicearr ${info.version} is downloading...`,
+      icon: getIconPath(),
+    }).show();
+    manualUpdateCheck = false;
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    if (manualUpdateCheck) {
+      manualUpdateCheck = false;
+      dialog.showMessageBox({ type: 'info', title: APP_NAME, message: 'You\'re already on the latest version.' });
+    }
+  });
 
   autoUpdater.on('update-downloaded', () => {
     updateReady = true;
@@ -126,10 +173,12 @@ function setupAutoUpdater(isPreRelease: boolean): void {
 
   autoUpdater.on('error', (err: Error) => {
     console.error('Auto-updater error:', err.message);
+    if (manualUpdateCheck) {
+      manualUpdateCheck = false;
+      dialog.showMessageBox({ type: 'error', title: 'Update Error', message: err.message });
+    }
   });
 
-  // Check on startup then every 4 hours
-  autoUpdater.checkForUpdates().catch((err: Error) => console.warn('Update check failed:', err.message));
   setInterval(() => {
     autoUpdater.checkForUpdates().catch(() => {});
   }, 4 * 60 * 60 * 1000);
@@ -217,7 +266,13 @@ function buildTrayMenu(): Electron.Menu {
   } else if (app.isPackaged) {
     template.push({
       label: 'Check for Updates',
-      click: () => { autoUpdater.checkForUpdates().catch(() => {}); },
+      click: () => {
+        manualUpdateCheck = true;
+        autoUpdater.checkForUpdates().catch((err: Error) => {
+          manualUpdateCheck = false;
+          dialog.showMessageBox({ type: 'error', title: 'Update Error', message: err.message });
+        });
+      },
     });
     template.push({ type: 'separator' });
   }
@@ -346,6 +401,8 @@ if (!gotLock) {
 async function main(): Promise<void> {
   const config = await resolveConfig();
   resolvedServerUrl = config.serverUrl;
+
+  await checkForMandatoryUpdate(config.isPreRelease);
 
   createWindow(config.serverUrl);
   createTray();
