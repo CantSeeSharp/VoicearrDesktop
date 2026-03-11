@@ -29,6 +29,7 @@ win:
   target:
     - target: nsis
       arch: [x64]
+  artifactName: "${productName}-Setup-beta.${ext}"
   # icon: resources/icon.ico   # Uncomment after adding icon.ico
 
 nsis:
@@ -39,10 +40,12 @@ nsis:
 linux:
   target:
     - AppImage
+  artifactName: "${productName}-beta.${ext}"
   category: Network
   # icon: resources/icon.png   # Uncomment after adding icon.png
 
 mac:
   target:
     - dmg
+  artifactName: "${productName}-beta.${ext}"
   # icon: resources/icon.icns  # Uncomment after adding icon.icns

@@ -56,3 +56,5 @@ spec/fixtures/logo.png
 .yarn/install-state.gz
 
 release/
+
+.claude/
