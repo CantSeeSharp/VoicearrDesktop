@@ -26,4 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('update-ready', () => cb());
   },
   installUpdate: (): Promise<void> => ipcRenderer.invoke('install-update'),
+
+  // Open a URL in the system default browser
+  openExternal: (url: string): Promise<void> => ipcRenderer.invoke('open-external', url),
 });

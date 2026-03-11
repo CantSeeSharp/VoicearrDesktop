@@ -80,8 +80,6 @@ interface AppConfig {
 }
 
 // Checks the GitHub release for the running version to determine if it is a
-// pre-release, then picks the appropriate server URL. Falls back to inspecting
-// the semver string (presence of '-') when the network is unavailable.
 async function resolveConfig(): Promise<AppConfig> {
   if (!app.isPackaged) {
     return { serverUrl: DEV_URL, isPreRelease: false };
@@ -281,7 +279,7 @@ function registerIpcHandlers(): void {
     }
   });
 
-  // OS notifications — only shown when the window is not focused
+  // OS notifications
   ipcMain.handle('show-notification', (_e, opts: { title: string; body: string; route?: string }) => {
     if (mainWindow?.isFocused()) return;
     if (!Notification.isSupported()) return;
@@ -301,14 +299,47 @@ function registerIpcHandlers(): void {
   ipcMain.handle('install-update', () => {
     autoUpdater.quitAndInstall();
   });
+
+  // Open a URL in the system default browser (used by OAuth flow)
+  ipcMain.handle('open-external', (_e, url: string) => shell.openExternal(url));
 }
+
+// ── Deep-link / OAuth callback ─────────────────────────────────────────────────
+// Register voicearr:// as the custom protocol handler (must be before app.ready).
+if (process.defaultApp) {
+  app.setAsDefaultProtocolClient('voicearr', process.execPath, [path.resolve(process.argv[1])]);
+} else {
+  app.setAsDefaultProtocolClient('voicearr');
+}
+
+function handleDeepLink(url: string): void {
+  try {
+    const parsed = new URL(url);
+    const params = parsed.search;
+    const base = resolvedServerUrl.replace(/\/$/, '');
+    mainWindow?.loadURL(`${base}/auth/callback${params}`);
+  } catch (err) {
+    console.error('handleDeepLink: invalid URL', url, err);
+  }
+}
+
+// macOS — deep links arrive via open-url event
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
+});
 
 // ── Single-instance lock ───────────────────────────────────────────────────────
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', showWindow);
+  // Windows/Linux — second-instance fires when the protocol URL launches a new instance
+  app.on('second-instance', (_, argv) => {
+    const deepLink = argv.find(arg => arg.startsWith('voicearr://'));
+    if (deepLink) handleDeepLink(deepLink);
+    showWindow();
+  });
 }
 
 // ── App lifecycle ──────────────────────────────────────────────────────────────
@@ -321,7 +352,11 @@ async function main(): Promise<void> {
   registerIpcHandlers();
   setupAutoUpdater(config.isPreRelease);
 
-  // Global key hooks for PTT (works even when app is not focused)
+  // Cold-start deep link: app was launched by clicking a voicearr:// URL (Windows/Linux)
+  const coldDeepLink = process.argv.find(arg => arg.startsWith('voicearr://'));
+  if (coldDeepLink) handleDeepLink(coldDeepLink);
+
+  // Global key hooks for PTT
   try {
     uIOhook.on('keydown', (e) => {
       if (pttEnabled && pttKeyCode !== null && e.keycode === pttKeyCode) {
@@ -343,11 +378,10 @@ app.on('ready', () => { main().catch(console.error); });
 
 // Keep app alive in tray when all windows are closed
 app.on('window-all-closed', () => {
-  // intentionally empty — tray keeps the process alive
 });
 
 // Mark as actually quitting so the close handler doesn't intercept
 app.on('before-quit', () => {
   isQuitting = true;
-  try { uIOhook.stop(); } catch { /* ignore */ }
+  try { uIOhook.stop(); } catch { }
 });
