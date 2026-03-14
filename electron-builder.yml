@@ -6,8 +6,11 @@ directories:
   output: release/
 
 publish:
-  provider: generic
-  url: https://updates.cantseesharp.com
+  - provider: github
+    owner: CantSeeSharp
+    repo: VoicearrDesktop
+  - provider: generic
+    url: https://updates.cantseesharp.com
 
 # Files included inside the asar
 files:
